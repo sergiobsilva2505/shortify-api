@@ -7,4 +7,6 @@ public interface ShortUrlService {
     ShortUrl create(String originalUrl);
 
     ShortUrl findByShortCode(String shortCode);
+
+    ShortUrl resolveAndRegisterAccess(String shortCode);
 }

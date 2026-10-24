@@ -29,13 +29,7 @@ public class ShortUrlController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-//    @GetMapping("/{code}")
-//    public ResponseEntity<Void> redirect(@PathVariable String code) {
-//        String target = service.findByShortCode(code).getOriginalUrl();
-//        return ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, target).build();
-//    }
-
-    @GetMapping("/{code}")
+    @GetMapping("/{code}/view")
     public ResponseEntity<ShortUrlResponse> findByCode(@PathVariable String code) {
         ShortUrlResponse response = mapper.toResponse(service.findByShortCode(code), currentBaseUrl());
         return ResponseEntity.ok(response);

@@ -7,6 +7,7 @@ import br.com.forjacode.shortifyapi.repository.ShortUrlRepository;
 import br.com.forjacode.shortifyapi.service.ShortCodeGenerator;
 import br.com.forjacode.shortifyapi.service.ShortUrlService;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URI;
 
@@ -34,6 +35,14 @@ public class ShortUrlServiceImpl implements ShortUrlService {
     @Override
     public ShortUrl findByShortCode(String shortCode) {
         return repository.findByShortCode(shortCode).orElseThrow(() -> new ShortUrlNotFoundException(shortCode));
+    }
+
+    @Override
+    @Transactional
+    public ShortUrl resolveAndRegisterAccess(String shortCode) {
+        ShortUrl shortUrl = findByShortCode(shortCode);
+        repository.incrementAccessCount(shortUrl.getId());
+        return shortUrl;
     }
 
     private void validate(String url) {
