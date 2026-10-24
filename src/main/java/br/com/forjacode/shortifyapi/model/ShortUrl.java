@@ -6,10 +6,12 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.DynamicUpdate;
 
 import java.time.Instant;
 
 @Entity
+@DynamicUpdate
 @Table(name = "short_url")
 public class ShortUrl {
 
@@ -17,7 +19,7 @@ public class ShortUrl {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "original_url", nullable = false)
+    @Column(name = "original_url", nullable = false, length = 2048)
     private String originalUrl;
 
     @Column(name = "short_code", nullable = false, unique = true)
@@ -44,8 +46,8 @@ public class ShortUrl {
         this.updatedAt = now;
     }
 
-    public void updateOriginalUrl(String newUrl) {
-        this.originalUrl = newUrl;
+    public void updateOriginalUrl(String newOriginalUrl) {
+        this.originalUrl = newOriginalUrl;
         this.updatedAt = Instant.now();
     }
 

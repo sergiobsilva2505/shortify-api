@@ -45,6 +45,15 @@ public class ShortUrlServiceImpl implements ShortUrlService {
         return shortUrl;
     }
 
+    @Override
+    @Transactional
+    public ShortUrl update(String code, String newOriginalUrl) {
+        ShortUrl shortUrl = findByShortCode(code);
+        validate(newOriginalUrl);
+        shortUrl.updateOriginalUrl(newOriginalUrl);
+        return shortUrl;
+    }
+
     private void validate(String url) {
         try {
             URI uri = URI.create(url);

@@ -44,12 +44,12 @@ adapter/
 
 | Método | Rota | Descrição |
 |---|---|---|
-| POST | `/shorten` | Cria uma short URL |
-| GET | `/shorten/{code}` | Retorna os dados da short URL |
-| GET | `/{code}` | Redireciona para a URL original |
-| PUT | `/shorten/{code}` | Atualiza a URL original |
-| DELETE | `/shorten/{code}` | Remove a short URL |
-| GET | `/shorten/{code}/stats` | Retorna estatísticas de acesso |
+| POST | `/api/shorten` | Cria uma short URL |
+| GET | `/api/shorten/{code}` | Retorna os dados da short URL |
+| GET | `/{code}` | Redireciona (302) para a URL original e incrementa o contador de acessos |
+| PUT | `/api/shorten/{code}` | Atualiza a URL original |
+| DELETE | `/api/shorten/{code}` | Remove a short URL _(planejado)_ |
+| GET | `/api/shorten/{code}/stats` | Retorna estatísticas de acesso _(planejado)_ |
 
 ## 🚀 Como executar
 

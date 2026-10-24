@@ -9,4 +9,6 @@ public interface ShortUrlService {
     ShortUrl findByShortCode(String shortCode);
 
     ShortUrl resolveAndRegisterAccess(String shortCode);
+
+    ShortUrl update(String code, String newOriginalUrl);
 }
