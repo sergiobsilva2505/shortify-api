@@ -17,7 +17,8 @@ public class ShortUrlRedirectController {
         this.service = service;
     }
 
-    @GetMapping("/{code}")
+    // Formato do Base62ShortCodeGenerator: 7 caracteres alfanuméricos.
+    @GetMapping("/{code:[0-9A-Za-z]{7}}")
     public ResponseEntity<Void> redirect(@PathVariable String code) {
         String target = service.resolveAndRegisterAccess(code).getOriginalUrl();
         return ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, target).build();
