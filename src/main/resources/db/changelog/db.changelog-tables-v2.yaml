@@ -1,0 +1,46 @@
+# db.changelog-tables-v2.yaml
+databaseChangeLog:
+  - changeSet:
+      id: 2
+      author: sergio
+      changes:
+        - createTable:
+            tableName: short_url
+            columns:
+              - column:
+                  name: id
+                  type: BIGINT
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: original_url
+                  type: VARCHAR(2048)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: short_code
+                  type: VARCHAR(16)
+                  constraints:
+                    unique: true
+                    nullable: false
+              - column:
+                  name: access_count
+                  type: BIGINT
+                  defaultValueNumeric: 0
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP
+                  constraints:
+                    nullable: false
+      rollback:
+        - dropTable:
+            tableName: short_url

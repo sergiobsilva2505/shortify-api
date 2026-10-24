@@ -1,0 +1,6 @@
+# db.changelog-master.yaml
+databaseChangeLog:
+  - include:
+      file: db/changelog/db.changelog-tables.yaml
+  - include:
+      file: db/changelog/db.changelog-tables-v2.yaml

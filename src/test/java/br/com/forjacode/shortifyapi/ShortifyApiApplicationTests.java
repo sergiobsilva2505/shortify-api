@@ -1,4 +1,4 @@
-package br.com.forjacode.shortify_api;
+package br.com.forjacode.shortifyapi;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
