@@ -1,21 +1,13 @@
 package br.com.forjacode.shortifyapi;
 
+import br.com.forjacode.shortifyapi.support.IntegrationTestSupport;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.mysql.MySQLContainer;
 
-@Testcontainers
 @SpringBootTest
-class ShortifyApiApplicationTests {
-
-    @Container
-    @ServiceConnection
-    static final MySQLContainer MYSQL = new MySQLContainer("mysql:8.4");
+class ShortifyApiApplicationTests extends IntegrationTestSupport {
 
     @Nested
     @DisplayName("Application Context Tests")

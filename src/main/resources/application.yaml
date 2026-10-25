@@ -19,3 +19,21 @@ spring:
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
     enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true       # /actuator/health/liveness e /readiness
+      show-details: never   # sem Spring Security no projeto, não vazar detalhes
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: ${spring.application.name}
