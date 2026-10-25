@@ -6,6 +6,7 @@ import br.com.forjacode.shortifyapi.model.ShortUrl;
 import br.com.forjacode.shortifyapi.repository.ShortUrlRepository;
 import br.com.forjacode.shortifyapi.service.ShortCodeGenerator;
 import br.com.forjacode.shortifyapi.service.ShortUrlService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +14,8 @@ import java.net.URI;
 
 @Service
 public class ShortUrlServiceImpl implements ShortUrlService {
+
+    private static final int MAX_CREATE_ATTEMPTS = 5;
 
     private final ShortUrlRepository repository;
     private final ShortCodeGenerator codeGenerator;
@@ -25,11 +28,25 @@ public class ShortUrlServiceImpl implements ShortUrlService {
     @Override
     public ShortUrl create(String originalUrl) {
         validate(originalUrl);
+        // A checagem de existência não é atômica com o save: sob concorrência, outro request pode
+        // gravar o mesmo código antes. A constraint única barra o duplicado e tentamos com outro código.
+        for (int attempt = 1; ; attempt++) {
+            try {
+                return repository.save(new ShortUrl(originalUrl, generateAvailableCode()));
+            } catch (DataIntegrityViolationException e) {
+                if (attempt == MAX_CREATE_ATTEMPTS) {
+                    throw e;
+                }
+            }
+        }
+    }
+
+    private String generateAvailableCode() {
         String shortCode;
         do {
             shortCode = codeGenerator.generate();
         } while (repository.existsByShortCode(shortCode));
-        return repository.save(new ShortUrl(originalUrl, shortCode));
+        return shortCode;
     }
 
     @Override

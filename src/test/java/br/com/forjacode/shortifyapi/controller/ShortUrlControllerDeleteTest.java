@@ -3,6 +3,8 @@ package br.com.forjacode.shortifyapi.controller;
 import br.com.forjacode.shortifyapi.exception.ShortUrlNotFoundException;
 import br.com.forjacode.shortifyapi.mapper.ShortUrlMapper;
 import br.com.forjacode.shortifyapi.service.ShortUrlService;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -21,6 +23,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(ShortUrlController.class)
 class ShortUrlControllerDeleteTest {
 
+    private static final String API = "/api/shorten";
+    private static final String CODE = "abc1234";
+    private static final String UNKNOWN_CODE = "zzz9999";
+    private static final String MALFORMED_CODE = "abc";
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -30,45 +37,80 @@ class ShortUrlControllerDeleteTest {
     @MockitoBean
     private ShortUrlMapper mapper;
 
-    @Test
-    void deleteReturnsNoContentForExistingCode() throws Exception {
-        mockMvc.perform(delete("/api/shorten/abc1234"))
-                .andExpect(status().isNoContent());
+    @Nested
+    @DisplayName("Delete ShortUrl Tests")
+    class Delete {
 
-        verify(service).delete("abc1234");
+        @Nested
+        @DisplayName("Should delete ShortUrl successfully")
+        class Success {
+
+            @Test
+            void shouldReturnNoContentForExistingCode() throws Exception {
+                mockMvc.perform(delete(API + "/" + CODE))
+                        .andExpect(status().isNoContent());
+
+                verify(service).delete(CODE);
+            }
+        }
+
+        @Nested
+        @DisplayName("Should return error when code is unknown or malformed")
+        class WithError {
+
+            @Test
+            void shouldReturnNotFoundForUnknownCode() throws Exception {
+                doThrow(new ShortUrlNotFoundException(UNKNOWN_CODE)).when(service).delete(UNKNOWN_CODE);
+
+                mockMvc.perform(delete(API + "/" + UNKNOWN_CODE))
+                        .andExpect(status().isNotFound());
+            }
+
+            @Test
+            void shouldRejectCodeOutsideExpectedFormat() throws Exception {
+                mockMvc.perform(delete(API + "/" + MALFORMED_CODE))
+                        .andExpect(status().isNotFound());
+
+                verifyNoInteractions(service);
+            }
+        }
     }
 
-    @Test
-    void deleteReturnsNotFoundForUnknownCode() throws Exception {
-        doThrow(new ShortUrlNotFoundException("zzz9999")).when(service).delete("zzz9999");
+    @Nested
+    @DisplayName("Find ShortUrl Tests")
+    class FindByCode {
 
-        mockMvc.perform(delete("/api/shorten/zzz9999"))
-                .andExpect(status().isNotFound());
+        @Nested
+        @DisplayName("Should return error when code is malformed")
+        class WithError {
+
+            @Test
+            void shouldRejectCodeOutsideExpectedFormat() throws Exception {
+                mockMvc.perform(get(API + "/" + MALFORMED_CODE))
+                        .andExpect(status().isNotFound());
+
+                verifyNoInteractions(service);
+            }
+        }
     }
 
-    @Test
-    void deleteRejectsCodeOutsideExpectedFormat() throws Exception {
-        mockMvc.perform(delete("/api/shorten/abc"))
-                .andExpect(status().isNotFound());
+    @Nested
+    @DisplayName("Update ShortUrl Tests")
+    class Update {
 
-        verifyNoInteractions(service);
-    }
+        @Nested
+        @DisplayName("Should return error when code is malformed")
+        class WithError {
 
-    @Test
-    void getRejectsCodeOutsideExpectedFormat() throws Exception {
-        mockMvc.perform(get("/api/shorten/abc"))
-                .andExpect(status().isNotFound());
+            @Test
+            void shouldRejectCodeOutsideExpectedFormat() throws Exception {
+                mockMvc.perform(put(API + "/" + MALFORMED_CODE)
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content("{\"url\":\"https://example.com\"}"))
+                        .andExpect(status().isNotFound());
 
-        verifyNoInteractions(service);
-    }
-
-    @Test
-    void putRejectsCodeOutsideExpectedFormat() throws Exception {
-        mockMvc.perform(put("/api/shorten/abc")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"url\":\"https://example.com\"}"))
-                .andExpect(status().isNotFound());
-
-        verifyNoInteractions(service);
+                verifyNoInteractions(service);
+            }
+        }
     }
 }

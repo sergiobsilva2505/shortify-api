@@ -51,10 +51,6 @@ public class ShortUrl {
         this.updatedAt = Instant.now();
     }
 
-    public void incrementAccessCount() {
-        this.accessCount++;
-    }
-
     public Long getId() {
         return id;
     }

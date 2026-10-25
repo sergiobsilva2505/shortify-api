@@ -1,51 +1,330 @@
 package br.com.forjacode.shortifyapi.service.impl;
 
+import br.com.forjacode.shortifyapi.exception.InvalidUrlException;
 import br.com.forjacode.shortifyapi.exception.ShortUrlNotFoundException;
 import br.com.forjacode.shortifyapi.model.ShortUrl;
 import br.com.forjacode.shortifyapi.repository.ShortUrlRepository;
+import br.com.forjacode.shortifyapi.service.ShortCodeGenerator;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ShortUrlServiceImplTest {
 
+    private static final String CODE = "abc1234";
+    private static final String URL = "https://example.com";
+
     @Mock
     private ShortUrlRepository repository;
+
+    @Mock
+    private ShortCodeGenerator codeGenerator;
 
     @InjectMocks
     private ShortUrlServiceImpl service;
 
-    @Test
-    void deleteRemovesExistingCode() {
-        when(repository.deleteByShortCode("abc1234")).thenReturn(1);
-
-        assertThatCode(() -> service.delete("abc1234")).doesNotThrowAnyException();
+    private ShortUrl newShortUrl() {
+        ShortUrl shortUrl = new ShortUrl(URL, CODE);
+        ReflectionTestUtils.setField(shortUrl, "id", 1L);
+        return shortUrl;
     }
 
-    @Test
-    void deleteThrowsNotFoundWhenCodeDoesNotExist() {
-        when(repository.deleteByShortCode("abc1234")).thenReturn(0);
+    @Nested
+    @DisplayName("Create ShortUrl Tests")
+    class Create {
 
-        assertThatThrownBy(() -> service.delete("abc1234"))
-                .isInstanceOf(ShortUrlNotFoundException.class);
+        @Nested
+        @DisplayName("Should create ShortUrl successfully")
+        class Success {
+
+            @Test
+            void shouldCreateShortUrl() {
+                when(codeGenerator.generate()).thenReturn(CODE);
+                when(repository.existsByShortCode(CODE)).thenReturn(false);
+                when(repository.save(any(ShortUrl.class))).thenAnswer(inv -> inv.getArgument(0));
+
+                ShortUrl result = service.create(URL);
+
+                assertThat(result.getOriginalUrl()).isEqualTo(URL);
+                assertThat(result.getShortCode()).isEqualTo(CODE);
+                assertThat(result.getAccessCount()).isZero();
+                verify(repository).save(any(ShortUrl.class));
+            }
+
+            @Test
+            void shouldRetryWithNewCodeWhenSaveViolatesUniqueConstraint() {
+                when(codeGenerator.generate()).thenReturn("taken01", CODE);
+                when(repository.existsByShortCode(any())).thenReturn(false);
+                when(repository.save(any(ShortUrl.class)))
+                        .thenThrow(new DataIntegrityViolationException("duplicate"))
+                        .thenAnswer(inv -> inv.getArgument(0));
+
+                ShortUrl result = service.create(URL);
+
+                assertThat(result.getShortCode()).isEqualTo(CODE);
+                verify(repository, times(2)).save(any(ShortUrl.class));
+            }
+
+            @Test
+            void shouldAcceptHttpScheme() {
+                when(codeGenerator.generate()).thenReturn(CODE);
+                when(repository.existsByShortCode(CODE)).thenReturn(false);
+                when(repository.save(any(ShortUrl.class))).thenAnswer(inv -> inv.getArgument(0));
+
+                ShortUrl result = service.create("http://example.com");
+
+                assertThat(result.getOriginalUrl()).isEqualTo("http://example.com");
+            }
+
+            @Test
+            void shouldRegenerateCodeWhenItAlreadyExists() {
+                when(codeGenerator.generate()).thenReturn("taken01", CODE);
+                when(repository.existsByShortCode("taken01")).thenReturn(true);
+                when(repository.existsByShortCode(CODE)).thenReturn(false);
+                when(repository.save(any(ShortUrl.class))).thenAnswer(inv -> inv.getArgument(0));
+
+                ShortUrl result = service.create(URL);
+
+                assertThat(result.getShortCode()).isEqualTo(CODE);
+                verify(codeGenerator, times(2)).generate();
+            }
+        }
+
+        @Nested
+        @DisplayName("Should throw exception for invalid URL")
+        class WithError {
+
+            @ParameterizedTest
+            @ValueSource(strings = {"not a url", "example.com", "ftp://example.com", "http://", "https:///path"})
+            void shouldThrowExceptionForInvalidUrl(String invalidUrl) {
+                assertThatThrownBy(() -> service.create(invalidUrl))
+                        .isInstanceOf(InvalidUrlException.class);
+
+                verifyNoInteractions(codeGenerator);
+                verify(repository, never()).save(any());
+            }
+
+            @Test
+            void shouldGiveUpAfterRepeatedUniqueConstraintViolations() {
+                when(codeGenerator.generate()).thenReturn(CODE);
+                when(repository.existsByShortCode(CODE)).thenReturn(false);
+                when(repository.save(any(ShortUrl.class))).thenThrow(new DataIntegrityViolationException("duplicate"));
+
+                assertThatThrownBy(() -> service.create(URL))
+                        .isInstanceOf(DataIntegrityViolationException.class);
+
+                verify(repository, times(5)).save(any(ShortUrl.class));
+            }
+        }
     }
 
-    @Test
-    void resolveThrowsNotFoundWhenRowIsDeletedBeforeIncrement() {
-        ShortUrl shortUrl = new ShortUrl("https://example.com", "abc1234");
-        when(repository.findByShortCode("abc1234")).thenReturn(Optional.of(shortUrl));
-        when(repository.incrementAccessCount(shortUrl.getId())).thenReturn(0);
+    @Nested
+    @DisplayName("FindByShortCode Tests")
+    class FindByShortCode {
 
-        assertThatThrownBy(() -> service.resolveAndRegisterAccess("abc1234"))
-                .isInstanceOf(ShortUrlNotFoundException.class);
+        @Nested
+        @DisplayName("Should find ShortUrl successfully")
+        class Success {
+
+            @Test
+            void shouldReturnShortUrlWhenCodeExists() {
+                ShortUrl shortUrl = newShortUrl();
+                when(repository.findByShortCode(CODE)).thenReturn(Optional.of(shortUrl));
+
+                assertThat(service.findByShortCode(CODE)).isSameAs(shortUrl);
+            }
+        }
+
+        @Nested
+        @DisplayName("Should throw exception when code does not exist")
+        class WithError {
+
+            @Test
+            void shouldThrowNotFoundWhenCodeDoesNotExist() {
+                when(repository.findByShortCode(CODE)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> service.findByShortCode(CODE))
+                        .isInstanceOf(ShortUrlNotFoundException.class);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("ResolveAndRegisterAccess Tests")
+    class ResolveAndRegisterAccess {
+
+        @Nested
+        @DisplayName("Should resolve and register access successfully")
+        class Success {
+
+            @Test
+            void shouldReturnShortUrlAndIncrementAccessCount() {
+                ShortUrl shortUrl = newShortUrl();
+                when(repository.findByShortCode(CODE)).thenReturn(Optional.of(shortUrl));
+                when(repository.incrementAccessCount(1L)).thenReturn(1);
+
+                ShortUrl result = service.resolveAndRegisterAccess(CODE);
+
+                assertThat(result).isSameAs(shortUrl);
+                verify(repository).incrementAccessCount(1L);
+            }
+        }
+
+        @Nested
+        @DisplayName("Should throw exception when ShortUrl is not found")
+        class WithError {
+
+            @Test
+            void shouldThrowNotFoundWhenCodeDoesNotExist() {
+                when(repository.findByShortCode(CODE)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> service.resolveAndRegisterAccess(CODE))
+                        .isInstanceOf(ShortUrlNotFoundException.class);
+
+                verify(repository, never()).incrementAccessCount(any());
+            }
+
+            @Test
+            void shouldThrowNotFoundWhenRowIsDeletedBeforeIncrement() {
+                ShortUrl shortUrl = newShortUrl();
+                when(repository.findByShortCode(CODE)).thenReturn(Optional.of(shortUrl));
+                when(repository.incrementAccessCount(1L)).thenReturn(0);
+
+                assertThatThrownBy(() -> service.resolveAndRegisterAccess(CODE))
+                        .isInstanceOf(ShortUrlNotFoundException.class);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Update ShortUrl Tests")
+    class Update {
+
+        private static final String NEW_URL = "https://example.org/new";
+
+        @Nested
+        @DisplayName("Should update ShortUrl successfully")
+        class Success {
+
+            @Test
+            void shouldUpdateOriginalUrl() {
+                ShortUrl shortUrl = newShortUrl();
+                when(repository.findByShortCode(CODE)).thenReturn(Optional.of(shortUrl));
+
+                ShortUrl result = service.update(CODE, NEW_URL);
+
+                assertThat(result).isSameAs(shortUrl);
+                assertThat(result.getOriginalUrl()).isEqualTo(NEW_URL);
+                assertThat(result.getShortCode()).isEqualTo(CODE);
+            }
+        }
+
+        @Nested
+        @DisplayName("Should throw exception on invalid input")
+        class WithError {
+
+            @Test
+            void shouldThrowNotFoundWhenCodeDoesNotExist() {
+                when(repository.findByShortCode(CODE)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> service.update(CODE, NEW_URL))
+                        .isInstanceOf(ShortUrlNotFoundException.class);
+            }
+
+            @ParameterizedTest
+            @ValueSource(strings = {"not a url", "example.com", "ftp://example.com", "http://"})
+            void shouldThrowExceptionForInvalidUrlAndKeepOriginal(String invalidUrl) {
+                ShortUrl shortUrl = newShortUrl();
+                when(repository.findByShortCode(CODE)).thenReturn(Optional.of(shortUrl));
+
+                assertThatThrownBy(() -> service.update(CODE, invalidUrl))
+                        .isInstanceOf(InvalidUrlException.class);
+
+                assertThat(shortUrl.getOriginalUrl()).isEqualTo(URL);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("Delete ShortUrl Tests")
+    class Delete {
+
+        @Nested
+        @DisplayName("Should delete ShortUrl successfully")
+        class Success {
+
+            @Test
+            void shouldRemoveExistingCode() {
+                when(repository.deleteByShortCode(CODE)).thenReturn(1);
+
+                assertThatCode(() -> service.delete(CODE)).doesNotThrowAnyException();
+
+                verify(repository).deleteByShortCode(CODE);
+            }
+        }
+
+        @Nested
+        @DisplayName("Should throw exception when code does not exist")
+        class WithError {
+
+            @Test
+            void shouldThrowNotFoundWhenCodeDoesNotExist() {
+                when(repository.deleteByShortCode(CODE)).thenReturn(0);
+
+                assertThatThrownBy(() -> service.delete(CODE))
+                        .isInstanceOf(ShortUrlNotFoundException.class);
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("GetAccessCount Tests")
+    class GetAccessCount {
+
+        @Nested
+        @DisplayName("Should return access count successfully")
+        class Success {
+
+            @Test
+            void shouldReturnAccessCount() {
+                when(repository.findAccessCountByShortCode(CODE)).thenReturn(Optional.of(5L));
+
+                assertThat(service.getAccessCount(CODE)).isEqualTo(5L);
+            }
+        }
+
+        @Nested
+        @DisplayName("Should throw exception when code does not exist")
+        class WithError {
+
+            @Test
+            void shouldThrowNotFoundWhenCodeDoesNotExist() {
+                when(repository.findAccessCountByShortCode(CODE)).thenReturn(Optional.empty());
+
+                assertThatThrownBy(() -> service.getAccessCount(CODE))
+                        .isInstanceOf(ShortUrlNotFoundException.class);
+            }
+        }
     }
 }
