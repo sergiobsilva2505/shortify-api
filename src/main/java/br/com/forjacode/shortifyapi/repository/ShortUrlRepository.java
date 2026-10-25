@@ -16,5 +16,9 @@ public interface ShortUrlRepository extends JpaRepository<ShortUrl, Long> {
 
     @Modifying(clearAutomatically = true)
     @Query("update ShortUrl s set s.accessCount = s.accessCount + 1 where s.id = :id")
-    void incrementAccessCount(@Param("id") Long id);
+    int incrementAccessCount(@Param("id") Long id);
+
+    @Modifying(clearAutomatically = true)
+    @Query("delete from ShortUrl s where s.shortCode = :shortCode")
+    int deleteByShortCode(@Param("shortCode") String shortCode);
 }

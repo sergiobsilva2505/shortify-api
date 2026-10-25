@@ -9,7 +9,6 @@ import java.security.SecureRandom;
 public class Base62ShortCodeGenerator implements ShortCodeGenerator {
 
     private static final String ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    private static final int CODE_LENGTH = 7;
 
     private final SecureRandom random = new SecureRandom();
 

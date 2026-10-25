@@ -41,7 +41,9 @@ public class ShortUrlServiceImpl implements ShortUrlService {
     @Transactional
     public ShortUrl resolveAndRegisterAccess(String shortCode) {
         ShortUrl shortUrl = findByShortCode(shortCode);
-        repository.incrementAccessCount(shortUrl.getId());
+        if (repository.incrementAccessCount(shortUrl.getId()) == 0) {
+            throw new ShortUrlNotFoundException(shortCode);
+        }
         return shortUrl;
     }
 
@@ -52,6 +54,14 @@ public class ShortUrlServiceImpl implements ShortUrlService {
         validate(newOriginalUrl);
         shortUrl.updateOriginalUrl(newOriginalUrl);
         return shortUrl;
+    }
+
+    @Override
+    @Transactional
+    public void delete(String code) {
+        if (repository.deleteByShortCode(code) == 0) {
+            throw new ShortUrlNotFoundException(code);
+        }
     }
 
     private void validate(String url) {

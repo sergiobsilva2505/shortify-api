@@ -11,4 +11,6 @@ public interface ShortUrlService {
     ShortUrl resolveAndRegisterAccess(String shortCode);
 
     ShortUrl update(String code, String newOriginalUrl);
+
+    void delete(String code);
 }
