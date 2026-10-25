@@ -2,6 +2,7 @@ package br.com.forjacode.shortifyapi.controller;
 
 import br.com.forjacode.shortifyapi.dto.request.ShortUrlRequest;
 import br.com.forjacode.shortifyapi.dto.response.ShortUrlResponse;
+import br.com.forjacode.shortifyapi.dto.response.StatsResponse;
 import br.com.forjacode.shortifyapi.mapper.ShortUrlMapper;
 import br.com.forjacode.shortifyapi.service.ShortCodeGenerator;
 import br.com.forjacode.shortifyapi.service.ShortUrlService;
@@ -54,6 +55,12 @@ public class ShortUrlController {
     public ResponseEntity<Void> delete(@PathVariable String code) {
         service.delete(code);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping(CODE_PATH + "/stats")
+    public ResponseEntity<StatsResponse> getStats(@PathVariable String code) {
+        StatsResponse response = mapper.toStatsResponse(code, service.getAccessCount(code));
+        return ResponseEntity.ok(response);
     }
 
     private String currentBaseUrl() {

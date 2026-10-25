@@ -64,6 +64,12 @@ public class ShortUrlServiceImpl implements ShortUrlService {
         }
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Long getAccessCount(String code) {
+        return repository.findAccessCountByShortCode(code).orElseThrow(() -> new ShortUrlNotFoundException(code));
+    }
+
     private void validate(String url) {
         try {
             URI uri = URI.create(url);

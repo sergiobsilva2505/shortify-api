@@ -1,6 +1,7 @@
 package br.com.forjacode.shortifyapi.mapper;
 
 import br.com.forjacode.shortifyapi.dto.response.ShortUrlResponse;
+import br.com.forjacode.shortifyapi.dto.response.StatsResponse;
 import br.com.forjacode.shortifyapi.model.ShortUrl;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,10 @@ public class ShortUrlMapper {
                 shortUrl.getCreatedAt(),
                 shortUrl.getUpdatedAt()
         );
+    }
+
+    public StatsResponse toStatsResponse(String code, Long accessCount) {
+        return new StatsResponse(code, accessCount);
     }
 
     private String buildShortUrl(String baseUrl, String shortCode) {
