@@ -1,5 +1,7 @@
 # 🔗 Shortify API
 
+[![CI](https://github.com/sergiobsilva2505/shortify-api/actions/workflows/ci.yml/badge.svg)](https://github.com/sergiobsilva2505/shortify-api/actions/workflows/ci.yml)
+
 API RESTful de encurtamento de URLs, com CRUD completo e estatísticas de acesso.
 
 ## ✨ Funcionalidades
@@ -202,15 +204,40 @@ curl -X POST http://localhost:8080/api/shorten \
 
 ## 🚀 Como executar
 
-Pré-requisitos: Java 21 e um MySQL acessível em `localhost:3306`, com o banco `shortifyapiDb` e o usuário `root` sem senha
-(valores padrão de `src/main/resources/application.yaml`; ajuste conforme seu ambiente).
+### Com Docker Compose
+
+```bash
+# Apenas o banco MySQL (e a API rodando pela IDE ou por ./mvnw spring-boot:run)
+docker compose up -d db
+
+# Banco + API em containers (perfil prod)
+docker compose --profile app up --build
+```
+
+Se a porta 3306 do host já estiver em uso, defina `DB_PORT` (ex.: `DB_PORT=3307 docker compose up -d db`) e aponte `DB_URL` para essa porta.
+
+### Sem Docker
+
+Pré-requisitos: Java 21 e um MySQL acessível. Por padrão a API usa `localhost:3306`, banco `shortifyapiDb`, usuário `root` sem senha.
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
+### Configuração
+
+| Variável | Padrão |
+|---|---|
+| `DB_URL` | `jdbc:mysql://localhost:3306/shortifyapiDb?useSSL=false&serverTimezone=UTC` |
+| `DB_USER` | `root` |
+| `DB_PASSWORD` | _(vazio)_ |
+| `SPRING_PROFILES_ACTIVE` | _(nenhum; a imagem Docker usa `prod`)_ |
+
+O perfil **`prod`** desativa a Swagger UI e o `/v3/api-docs`, expõe apenas `health` e `info` no Actuator e desliga o log de SQL.
+Como a API não tem autenticação, mantenha `/actuator` e a documentação fora de redes públicas.
+
 As migrations do Liquibase são executadas automaticamente na inicialização.
-Com a aplicação no ar, abra a Swagger UI em <http://localhost:8080/swagger-ui/index.html> e o health em <http://localhost:8080/actuator/health>.
+Com a aplicação no ar (perfil padrão), abra a Swagger UI em <http://localhost:8080/swagger-ui/index.html> e o health em <http://localhost:8080/actuator/health>.
 
 ## 🧪 Testes
 

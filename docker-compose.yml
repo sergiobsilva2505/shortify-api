@@ -1,0 +1,33 @@
+# Banco para desenvolvimento local: docker compose up -d db
+# A API completa (banco + aplicação em container): docker compose --profile app up --build
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: shortifyapiDb
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"   # somente desenvolvimento; combina com o padrão do application.yaml
+    ports:
+      - "${DB_PORT:-3306}:3306"
+    volumes:
+      - shortify-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  app:
+    profiles: ["app"]
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:mysql://db:3306/shortifyapiDb?useSSL=false&serverTimezone=UTC
+      DB_USER: root
+      DB_PASSWORD: ""
+    ports:
+      - "8080:8080"
+
+volumes:
+  shortify-db:

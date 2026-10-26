@@ -3,9 +3,9 @@ spring:
     name: shortify-api
 
   datasource:
-    url: jdbc:mysql://localhost:3306/shortifyapiDb?useSSL=false&serverTimezone=UTC
-    username: root
-    password:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/shortifyapiDb?useSSL=false&serverTimezone=UTC}
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
