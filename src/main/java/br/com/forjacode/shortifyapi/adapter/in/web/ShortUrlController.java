@@ -36,14 +36,14 @@ public class ShortUrlController implements ShortUrlApi {
     @Override
     @PostMapping
     public ResponseEntity<ShortUrlResponse> shorten(@Valid @RequestBody ShortUrlRequest request) {
-        ShortUrlResponse response = mapper.toResponse(service.create(request.url()), currentBaseUrl());
+        ShortUrlResponse response = mapper.toResponse(service.create(request.url()));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Override
     @GetMapping(CODE_PATH)
     public ResponseEntity<ShortUrlResponse> findByCode(@PathVariable String code) {
-        ShortUrlResponse response = mapper.toResponse(service.findByShortCode(code), currentBaseUrl());
+        ShortUrlResponse response = mapper.toResponse(service.findByShortCode(code));
         return ResponseEntity.ok(response);
     }
 
@@ -52,7 +52,7 @@ public class ShortUrlController implements ShortUrlApi {
     public ResponseEntity<ShortUrlResponse> update(
             @PathVariable String code,
             @Valid @RequestBody ShortUrlRequest request) {
-        ShortUrlResponse response = mapper.toResponse(service.update(code, request.url()), currentBaseUrl());
+        ShortUrlResponse response = mapper.toResponse(service.update(code, request.url()));
         return ResponseEntity.ok(response);
     }
 

@@ -8,12 +8,11 @@ import org.springframework.stereotype.Component;
 @Component
 public class ShortUrlMapper {
 
-    public ShortUrlResponse toResponse(ShortUrl shortUrl, String baseUrl) {
+    public ShortUrlResponse toResponse(ShortUrl shortUrl) {
         return new ShortUrlResponse(
                 shortUrl.getId(),
                 shortUrl.getOriginalUrl(),
                 shortUrl.getShortCode(),
-                buildShortUrl(baseUrl, shortUrl.getShortCode()),
                 shortUrl.getCreatedAt(),
                 shortUrl.getUpdatedAt()
         );
@@ -23,6 +22,7 @@ public class ShortUrlMapper {
         return new StatsResponse(code, accessCount);
     }
 
+    // TODO: Se não for usar essa função, remover
     private String buildShortUrl(String baseUrl, String shortCode) {
         String normalizedBaseUrl = baseUrl.endsWith("/")
                 ? baseUrl.substring(0, baseUrl.length() - 1)
