@@ -28,9 +28,6 @@ public class ShortUrlService implements ShortUrlUseCase {
     @Override
     public ShortUrl create(String originalUrl) {
         validate(originalUrl);
-        // A checagem de existência não é atômica com o save: sob concorrência, outro request pode
-        // gravar o mesmo código antes. A constraint única barra o duplicado (o adapter de persistência
-        // a traduz em ShortCodeAlreadyExistsException) e tentamos com outro código.
         for (int attempt = 1; ; attempt++) {
             try {
                 return repository.save(new ShortUrl(originalUrl, generateAvailableCode()));
@@ -80,12 +77,6 @@ public class ShortUrlService implements ShortUrlUseCase {
         if (repository.deleteByShortCode(code) == 0) {
             throw new ShortUrlNotFoundException(code);
         }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Long getAccessCount(String code) {
-        return repository.findAccessCountByShortCode(code).orElseThrow(() -> new ShortUrlNotFoundException(code));
     }
 
     private void validate(String url) {

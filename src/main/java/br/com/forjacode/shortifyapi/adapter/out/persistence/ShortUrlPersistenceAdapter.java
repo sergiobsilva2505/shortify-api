@@ -52,11 +52,6 @@ public class ShortUrlPersistenceAdapter implements ShortUrlRepositoryPort {
     }
 
     @Override
-    public Optional<Long> findAccessCountByShortCode(String shortCode) {
-        return repository.findAccessCountByShortCode(shortCode);
-    }
-
-    @Override
     public int incrementAccessCount(Long id) {
         return repository.incrementAccessCount(id);
     }

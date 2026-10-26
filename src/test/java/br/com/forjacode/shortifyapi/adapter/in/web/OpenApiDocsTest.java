@@ -33,27 +33,27 @@ class OpenApiDocsTest extends IntegrationTestSupport {
                 mockMvc.perform(get("/v3/api-docs"))
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.info.title").value("Shortify API"))
-                        .andExpect(jsonPath("$.paths['/api/shorten'].post").exists())
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}'].get").exists())
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}'].put").exists())
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}'].delete").exists())
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}/stats'].get").exists());
+                        .andExpect(jsonPath("$.paths['/shorten'].post").exists())
+                        .andExpect(jsonPath("$.paths['/shorten/{code}'].get").exists())
+                        .andExpect(jsonPath("$.paths['/shorten/{code}'].put").exists())
+                        .andExpect(jsonPath("$.paths['/shorten/{code}'].delete").exists())
+                        .andExpect(jsonPath("$.paths['/shorten/{code}/stats'].get").exists());
             }
 
             @Test
             void shouldDocumentOperationsDeclaredInApiInterface() throws Exception {
                 mockMvc.perform(get("/v3/api-docs"))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.paths['/api/shorten'].post.tags[0]").value("Short URLs"))
-                        .andExpect(jsonPath("$.paths['/api/shorten'].post.summary").value("Cria uma URL curta"))
-                        .andExpect(jsonPath("$.paths['/api/shorten'].post.responses['201']").exists())
-                        .andExpect(jsonPath("$.paths['/api/shorten'].post.responses['400']").exists())
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}'].put.responses['404']").exists())
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}'].delete.responses['204']").exists())
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}'].get.parameters[0].name").value("code"))
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}'].get.parameters[0].description")
+                        .andExpect(jsonPath("$.paths['/shorten'].post.tags[0]").value("Short URLs"))
+                        .andExpect(jsonPath("$.paths['/shorten'].post.summary").value("Cria uma URL curta"))
+                        .andExpect(jsonPath("$.paths['/shorten'].post.responses['201']").exists())
+                        .andExpect(jsonPath("$.paths['/shorten'].post.responses['400']").exists())
+                        .andExpect(jsonPath("$.paths['/shorten/{code}'].put.responses['404']").exists())
+                        .andExpect(jsonPath("$.paths['/shorten/{code}'].delete.responses['204']").exists())
+                        .andExpect(jsonPath("$.paths['/shorten/{code}'].get.parameters[0].name").value("code"))
+                        .andExpect(jsonPath("$.paths['/shorten/{code}'].get.parameters[0].description")
                                 .value(ShortUrlApi.CODE_DESCRIPTION))
-                        .andExpect(jsonPath("$.paths['/api/shorten/{code}'].get.parameters[0].example")
+                        .andExpect(jsonPath("$.paths['/shorten/{code}'].get.parameters[0].example")
                                 .value(ShortUrlApi.CODE_EXAMPLE));
             }
 

@@ -1,7 +1,7 @@
 package br.com.forjacode.shortifyapi.adapter.in.web.mapper;
 
 import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.ShortUrlResponse;
-import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.StatsResponse;
+import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.ShortUrlStatsResponse;
 import br.com.forjacode.shortifyapi.domain.model.ShortUrl;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,7 +15,6 @@ class ShortUrlMapperTest {
 
     private static final String CODE = "abc1234";
     private static final String URL = "https://example.com";
-    private static final String BASE_URL = "http://localhost:8080";
 
     private final ShortUrlMapper mapper = new ShortUrlMapper();
 
@@ -37,28 +36,13 @@ class ShortUrlMapperTest {
             void shouldMapAllFields() {
                 ShortUrl shortUrl = newShortUrl();
 
-                ShortUrlResponse response = mapper.toResponse(shortUrl, BASE_URL);
+                ShortUrlResponse response = mapper.toResponse(shortUrl);
 
                 assertThat(response.id()).isEqualTo(1L);
                 assertThat(response.url()).isEqualTo(URL);
                 assertThat(response.shortCode()).isEqualTo(CODE);
-                assertThat(response.shortUrl()).isEqualTo(BASE_URL + "/" + CODE);
                 assertThat(response.createdAt()).isEqualTo(shortUrl.getCreatedAt());
                 assertThat(response.updatedAt()).isEqualTo(shortUrl.getUpdatedAt());
-            }
-
-            @Test
-            void shouldNotDuplicateSlashWhenBaseUrlEndsWithSlash() {
-                ShortUrlResponse response = mapper.toResponse(newShortUrl(), BASE_URL + "/");
-
-                assertThat(response.shortUrl()).isEqualTo(BASE_URL + "/" + CODE);
-            }
-
-            @Test
-            void shouldSupportEmptyBaseUrl() {
-                ShortUrlResponse response = mapper.toResponse(newShortUrl(), "");
-
-                assertThat(response.shortUrl()).isEqualTo("/" + CODE);
             }
         }
 
@@ -68,15 +52,7 @@ class ShortUrlMapperTest {
 
             @Test
             void shouldThrowExceptionWhenShortUrlIsNull() {
-                assertThatThrownBy(() -> mapper.toResponse(null, BASE_URL))
-                        .isInstanceOf(NullPointerException.class);
-            }
-
-            @Test
-            void shouldThrowExceptionWhenBaseUrlIsNull() {
-                ShortUrl shortUrl = newShortUrl();
-
-                assertThatThrownBy(() -> mapper.toResponse(shortUrl, null))
+                assertThatThrownBy(() -> mapper.toResponse(null))
                         .isInstanceOf(NullPointerException.class);
             }
         }
@@ -84,23 +60,43 @@ class ShortUrlMapperTest {
 
     @Nested
     @DisplayName("ToStatsResponse Tests")
-    class ToStatsResponse {
+    class ToShortUrlStatsResponse {
 
         @Nested
         @DisplayName("Should map stats successfully")
         class Success {
 
             @Test
-            void shouldMapCodeAndAccessCount() {
-                StatsResponse response = mapper.toStatsResponse(CODE, 5L);
+            void shouldMapAllFieldsIncludingAccessCount() {
+                ShortUrl shortUrl = newShortUrl();
+                ReflectionTestUtils.setField(shortUrl, "accessCount", 5L);
 
-                assertThat(response.code()).isEqualTo(CODE);
+                ShortUrlStatsResponse response = mapper.toStatsResponse(shortUrl);
+
+                assertThat(response.id()).isEqualTo(1L);
+                assertThat(response.url()).isEqualTo(URL);
+                assertThat(response.shortCode()).isEqualTo(CODE);
+                assertThat(response.createdAt()).isEqualTo(shortUrl.getCreatedAt());
+                assertThat(response.updatedAt()).isEqualTo(shortUrl.getUpdatedAt());
                 assertThat(response.accessCount()).isEqualTo(5L);
             }
 
             @Test
             void shouldMapZeroAccessCount() {
-                assertThat(mapper.toStatsResponse(CODE, 0L).accessCount()).isZero();
+                ShortUrl shortUrl = newShortUrl();
+
+                assertThat(mapper.toStatsResponse(shortUrl).accessCount()).isZero();
+            }
+        }
+
+        @Nested
+        @DisplayName("Should throw exception for null input")
+        class WithError {
+
+            @Test
+            void shouldThrowExceptionWhenShortUrlIsNull() {
+                assertThatThrownBy(() -> mapper.toStatsResponse(null))
+                        .isInstanceOf(NullPointerException.class);
             }
         }
     }

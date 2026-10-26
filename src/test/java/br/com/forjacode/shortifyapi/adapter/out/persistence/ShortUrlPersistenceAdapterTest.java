@@ -109,42 +109,6 @@ class ShortUrlPersistenceAdapterTest extends IntegrationTestSupport {
     }
 
     @Nested
-    @DisplayName("FindAccessCountByShortCode Tests")
-    class FindAccessCountByShortCode {
-
-        @Nested
-        @DisplayName("Should return access count successfully")
-        class Success {
-
-            @Test
-            void shouldReturnZeroForNewShortUrl() {
-                persist(CODE);
-
-                assertThat(repository.findAccessCountByShortCode(CODE)).contains(0L);
-            }
-
-            @Test
-            void shouldReturnUpdatedCountAfterIncrement() {
-                ShortUrlJpaEntity saved = persist(CODE);
-                repository.incrementAccessCount(saved.getId());
-                repository.incrementAccessCount(saved.getId());
-
-                assertThat(repository.findAccessCountByShortCode(CODE)).contains(2L);
-            }
-        }
-
-        @Nested
-        @DisplayName("Should return empty when code does not exist")
-        class WithError {
-
-            @Test
-            void shouldReturnEmptyWhenCodeDoesNotExist() {
-                assertThat(repository.findAccessCountByShortCode(CODE)).isEmpty();
-            }
-        }
-    }
-
-    @Nested
     @DisplayName("IncrementAccessCount Tests")
     class IncrementAccessCount {
 
@@ -234,7 +198,6 @@ class ShortUrlPersistenceAdapterTest extends IntegrationTestSupport {
                 ShortUrl updated = repository.save(staleDomain);
 
                 assertThat(updated.getOriginalUrl()).isEqualTo("https://example.org/new");
-                assertThat(repository.findAccessCountByShortCode(CODE)).contains(1L);
             }
         }
 

@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(ShortUrlController.class)
 class ShortUrlControllerDeleteTest {
 
-    private static final String API = "/api/shorten";
+    private static final String API = "/shorten";
     private static final String CODE = "abc1234";
     private static final String UNKNOWN_CODE = "zzz9999";
     private static final String MALFORMED_CODE = "abc";
