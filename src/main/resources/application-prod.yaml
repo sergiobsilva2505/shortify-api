@@ -1,0 +1,16 @@
+# Perfil de produção: ative com SPRING_PROFILES_ACTIVE=prod (a imagem Docker já faz isso).
+spring:
+  jpa:
+    show-sql: false
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
