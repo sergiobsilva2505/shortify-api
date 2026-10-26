@@ -2,7 +2,7 @@ package br.com.forjacode.shortifyapi.adapter.in.web;
 
 import br.com.forjacode.shortifyapi.adapter.in.web.dto.request.ShortUrlRequest;
 import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.ShortUrlResponse;
-import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.StatsResponse;
+import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.ShortUrlStatsResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -59,6 +59,6 @@ public interface ShortUrlApi {
     @ApiResponse(responseCode = "404", description = "Código não encontrado",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,
                     schema = @Schema(implementation = ProblemDetail.class)))
-    ResponseEntity<StatsResponse> getStats(
+    ResponseEntity<ShortUrlStatsResponse> getStats(
             @Parameter(description = CODE_DESCRIPTION, example = CODE_EXAMPLE) String code);
 }

@@ -13,6 +13,4 @@ public interface ShortUrlUseCase {
     ShortUrl update(String code, String newOriginalUrl);
 
     void delete(String code);
-
-    Long getAccessCount(String code);
 }

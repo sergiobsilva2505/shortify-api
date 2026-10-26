@@ -13,7 +13,6 @@ import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
@@ -33,7 +32,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.matchesPattern;
 import static org.mockito.Mockito.doAnswer;
@@ -43,7 +41,6 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -56,7 +53,6 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
     private static final String UNKNOWN_CODE = "zzz9999";
     private static final String URL = "https://example.com";
     private static final String NEW_URL = "https://example.org/new";
-    private static final String COMPLEX_URL = "https://example.com/caf%C3%A9/path?q=a%20b&page=2#section-1";
     private static final String COLLIDING_CODE = "dup0001";
     private static final int MAX_URL_LENGTH = 2048;
     private static final String PAST_TIMESTAMP = "2020-01-01 00:00:00";
@@ -132,7 +128,6 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
                         .andExpect(jsonPath("$.id").isNumber())
                         .andExpect(jsonPath("$.url").value(URL))
                         .andExpect(jsonPath("$.shortCode").value(matchesPattern("[0-9A-Za-z]{7}")))
-                        .andExpect(jsonPath("$.shortUrl").value(matchesPattern(".+/[0-9A-Za-z]{7}")))
                         .andExpect(jsonPath("$.createdAt").exists())
                         .andExpect(jsonPath("$.updatedAt").exists());
 
@@ -262,8 +257,7 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
                         .andExpect(status().isOk())
                         .andExpect(jsonPath("$.id").value(saved.getId()))
                         .andExpect(jsonPath("$.url").value(URL))
-                        .andExpect(jsonPath("$.shortCode").value(CODE))
-                        .andExpect(jsonPath("$.shortUrl").value(endsWith("/" + CODE)));
+                        .andExpect(jsonPath("$.shortCode").value(CODE));
             }
         }
 
@@ -281,74 +275,6 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
             @Test
             void shouldReturnNotFoundForMalformedCode() throws Exception {
                 mockMvc.perform(get(API + "/abc"))
-                        .andExpect(status().isNotFound());
-            }
-        }
-    }
-
-    @Nested
-    @DisplayName("Redirect Tests (GET /{code})")
-    class Redirect {
-
-        @Nested
-        @DisplayName("Should redirect successfully")
-        class Success {
-
-            @Test
-            void shouldRedirectToOriginalUrl() throws Exception {
-                persist();
-
-                mockMvc.perform(get("/" + CODE))
-                        .andExpect(status().isFound())
-                        .andExpect(header().string(HttpHeaders.LOCATION, URL));
-            }
-
-            @Test
-            void shouldIncrementAccessCountOnEachRedirect() throws Exception {
-                persist();
-
-                for (int i = 0; i < 3; i++) {
-                    mockMvc.perform(get("/" + CODE)).andExpect(status().isFound());
-                }
-
-                assertThat(repository.findAccessCountByShortCode(CODE)).contains(3L);
-            }
-
-            @Test
-            void shouldCountEveryAccessWhenRedirectsAreConcurrent() throws Exception {
-                persist();
-                int threads = 50;
-
-                List<Integer> statuses = runConcurrently(threads, () ->
-                        mockMvc.perform(get("/" + CODE)).andReturn().getResponse().getStatus());
-
-                assertThat(statuses).containsOnly(302);
-                assertThat(repository.findAccessCountByShortCode(CODE)).contains((long) threads);
-            }
-
-            @Test
-            void shouldPreserveQueryStringAndFragmentInLocation() throws Exception {
-                repository.save(newEntity(COMPLEX_URL, CODE));
-
-                mockMvc.perform(get("/" + CODE))
-                        .andExpect(status().isFound())
-                        .andExpect(header().string(HttpHeaders.LOCATION, COMPLEX_URL));
-            }
-        }
-
-        @Nested
-        @DisplayName("Should return error when code is unknown or malformed")
-        class WithError {
-
-            @Test
-            void shouldReturnNotFoundForUnknownCode() throws Exception {
-                mockMvc.perform(get("/" + UNKNOWN_CODE))
-                        .andExpect(status().isNotFound());
-            }
-
-            @Test
-            void shouldReturnNotFoundForMalformedCode() throws Exception {
-                mockMvc.perform(get("/abc"))
                         .andExpect(status().isNotFound());
             }
         }
@@ -389,17 +315,6 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
                         "select cast(updated_at as char) from short_url where short_code = ?", String.class, CODE);
                 assertThat(createdAt).startsWith(PAST_TIMESTAMP);
                 assertThat(updatedAt).doesNotStartWith(PAST_TIMESTAMP);
-            }
-
-            @Test
-            void shouldRedirectToNewUrlAfterUpdate() throws Exception {
-                persist();
-                mockMvc.perform(put(API + "/" + CODE).contentType(MediaType.APPLICATION_JSON).content(body(NEW_URL)))
-                        .andExpect(status().isOk());
-
-                mockMvc.perform(get("/" + CODE))
-                        .andExpect(status().isFound())
-                        .andExpect(header().string(HttpHeaders.LOCATION, NEW_URL));
             }
         }
 
@@ -502,16 +417,14 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
 
                 mockMvc.perform(get(API + "/" + CODE + "/stats"))
                         .andExpect(status().isOk())
-                        .andExpect(jsonPath("$.code").value(CODE))
+                        .andExpect(jsonPath("$.shortCode").value(CODE))
                         .andExpect(jsonPath("$.accessCount").value(0));
             }
 
             @Test
-            void shouldReflectRedirectsInAccessCount() throws Exception {
+            void shouldReflectAccessCountIncrements() throws Exception {
                 persist();
-                for (int i = 0; i < 2; i++) {
-                    mockMvc.perform(get("/" + CODE)).andExpect(status().isFound());
-                }
+                jdbcTemplate.update("update short_url set access_count = ? where short_code = ?", 2L, CODE);
 
                 MvcResult result = mockMvc.perform(get(API + "/" + CODE + "/stats"))
                         .andExpect(status().isOk())
@@ -546,14 +459,6 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
         @Nested
         @DisplayName("Should return error for unsupported methods")
         class WithError {
-
-            @Test
-            void shouldReturnMethodNotAllowedForPostOnRedirectRoute() throws Exception {
-                persist();
-
-                mockMvc.perform(post("/" + CODE))
-                        .andExpect(status().isMethodNotAllowed());
-            }
 
             @Test
             void shouldReturnMethodNotAllowedForPatchOnCodeRoute() throws Exception {

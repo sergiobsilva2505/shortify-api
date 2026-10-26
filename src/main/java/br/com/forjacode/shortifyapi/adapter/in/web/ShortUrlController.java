@@ -2,10 +2,11 @@ package br.com.forjacode.shortifyapi.adapter.in.web;
 
 import br.com.forjacode.shortifyapi.adapter.in.web.dto.request.ShortUrlRequest;
 import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.ShortUrlResponse;
-import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.StatsResponse;
+import br.com.forjacode.shortifyapi.adapter.in.web.dto.response.ShortUrlStatsResponse;
 import br.com.forjacode.shortifyapi.adapter.in.web.mapper.ShortUrlMapper;
 import br.com.forjacode.shortifyapi.application.port.in.ShortUrlUseCase;
 import br.com.forjacode.shortifyapi.domain.model.ShortCodeFormat;
+import br.com.forjacode.shortifyapi.domain.model.ShortUrl;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,6 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/shorten")
@@ -65,14 +65,9 @@ public class ShortUrlController implements ShortUrlApi {
 
     @Override
     @GetMapping(CODE_PATH + "/stats")
-    public ResponseEntity<StatsResponse> getStats(@PathVariable String code) {
-        StatsResponse response = mapper.toStatsResponse(code, service.getAccessCount(code));
+    public ResponseEntity<ShortUrlStatsResponse> getStats(@PathVariable String code) {
+        ShortUrl shortUrl = service.findByShortCode(code);
+        ShortUrlStatsResponse response = mapper.toStatsResponse(shortUrl);
         return ResponseEntity.ok(response);
-    }
-
-    private String currentBaseUrl() {
-        return ServletUriComponentsBuilder.fromCurrentContextPath()
-                .build()
-                .toUriString();
     }
 }

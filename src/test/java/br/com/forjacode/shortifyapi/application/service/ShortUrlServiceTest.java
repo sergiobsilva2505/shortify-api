@@ -299,34 +299,4 @@ class ShortUrlServiceTest {
             }
         }
     }
-
-    @Nested
-    @DisplayName("GetAccessCount Tests")
-    class GetAccessCount {
-
-        @Nested
-        @DisplayName("Should return access count successfully")
-        class Success {
-
-            @Test
-            void shouldReturnAccessCount() {
-                when(repository.findAccessCountByShortCode(CODE)).thenReturn(Optional.of(5L));
-
-                assertThat(service.getAccessCount(CODE)).isEqualTo(5L);
-            }
-        }
-
-        @Nested
-        @DisplayName("Should throw exception when code does not exist")
-        class WithError {
-
-            @Test
-            void shouldThrowNotFoundWhenCodeDoesNotExist() {
-                when(repository.findAccessCountByShortCode(CODE)).thenReturn(Optional.empty());
-
-                assertThatThrownBy(() -> service.getAccessCount(CODE))
-                        .isInstanceOf(ShortUrlNotFoundException.class);
-            }
-        }
-    }
 }
