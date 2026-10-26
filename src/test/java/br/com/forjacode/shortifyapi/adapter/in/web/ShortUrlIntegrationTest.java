@@ -48,7 +48,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 class ShortUrlIntegrationTest extends IntegrationTestSupport {
 
-    private static final String API = "/api/shorten";
+    private static final String API = "/shorten";
     private static final String CODE = "abc1234";
     private static final String UNKNOWN_CODE = "zzz9999";
     private static final String URL = "https://example.com";
@@ -114,7 +114,7 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
     }
 
     @Nested
-    @DisplayName("Create ShortUrl Tests (POST /api/shorten)")
+    @DisplayName("Create ShortUrl Tests (POST /shorten)")
     class Create {
 
         @Nested
@@ -242,7 +242,7 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
     }
 
     @Nested
-    @DisplayName("Find ShortUrl Tests (GET /api/shorten/{code})")
+    @DisplayName("Find ShortUrl Tests (GET /shorten/{code})")
     class FindByCode {
 
         @Nested
@@ -258,6 +258,42 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
                         .andExpect(jsonPath("$.id").value(saved.getId()))
                         .andExpect(jsonPath("$.url").value(URL))
                         .andExpect(jsonPath("$.shortCode").value(CODE));
+            }
+
+            @Test
+            void shouldCountEachRetrievalAsAnAccess() throws Exception {
+                persist();
+
+                mockMvc.perform(get(API + "/" + CODE)).andExpect(status().isOk());
+                mockMvc.perform(get(API + "/" + CODE)).andExpect(status().isOk());
+                mockMvc.perform(get(API + "/" + CODE)).andExpect(status().isOk());
+
+                mockMvc.perform(get(API + "/" + CODE + "/stats"))
+                        .andExpect(status().isOk())
+                        .andExpect(jsonPath("$.accessCount").value(3));
+            }
+
+            @Test
+            void shouldNotCountStatsOrUpdateAsAccess() throws Exception {
+                persist();
+
+                mockMvc.perform(get(API + "/" + CODE + "/stats")).andExpect(status().isOk());
+                mockMvc.perform(put(API + "/" + CODE).contentType(MediaType.APPLICATION_JSON).content(body(NEW_URL)))
+                        .andExpect(status().isOk());
+                mockMvc.perform(get(API + "/" + CODE + "/stats"))
+                        .andExpect(jsonPath("$.accessCount").value(0));
+            }
+
+            @Test
+            void shouldNotLoseAccessCountUnderConcurrentRetrievals() throws Exception {
+                persist();
+                int threads = 20;
+
+                List<Integer> statuses = runConcurrently(threads, () ->
+                        mockMvc.perform(get(API + "/" + CODE)).andReturn().getResponse().getStatus());
+
+                assertThat(statuses).containsOnly(200);
+                assertThat(repository.findAccessCountByShortCode(CODE)).contains((long) threads);
             }
         }
 
@@ -281,7 +317,7 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
     }
 
     @Nested
-    @DisplayName("Update ShortUrl Tests (PUT /api/shorten/{code})")
+    @DisplayName("Update ShortUrl Tests (PUT /shorten/{code})")
     class Update {
 
         @Nested
@@ -358,7 +394,7 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
     }
 
     @Nested
-    @DisplayName("Delete ShortUrl Tests (DELETE /api/shorten/{code})")
+    @DisplayName("Delete ShortUrl Tests (DELETE /shorten/{code})")
     class Delete {
 
         @Nested
@@ -404,7 +440,7 @@ class ShortUrlIntegrationTest extends IntegrationTestSupport {
     }
 
     @Nested
-    @DisplayName("Stats Tests (GET /api/shorten/{code}/stats)")
+    @DisplayName("Stats Tests (GET /shorten/{code}/stats)")
     class Stats {
 
         @Nested

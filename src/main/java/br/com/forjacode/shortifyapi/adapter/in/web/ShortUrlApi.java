@@ -26,7 +26,7 @@ public interface ShortUrlApi {
                     schema = @Schema(implementation = ProblemDetail.class)))
     ResponseEntity<ShortUrlResponse> shorten(ShortUrlRequest request);
 
-    @Operation(summary = "Consulta uma URL curta pelo código")
+    @Operation(summary = "Consulta uma URL curta pelo código e registra o acesso")
     @ApiResponse(responseCode = "200", description = "URL curta encontrada")
     @ApiResponse(responseCode = "404", description = "Código não encontrado",
             content = @Content(mediaType = MediaType.APPLICATION_PROBLEM_JSON_VALUE,

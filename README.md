@@ -1,252 +1,173 @@
 # 🔗 Shortify API
 
+📌 Project idea: <https://roadmap.sh/projects/url-shortening-service>
+
 [![CI](https://github.com/sergiobsilva2505/shortify-api/actions/workflows/ci.yml/badge.svg)](https://github.com/sergiobsilva2505/shortify-api/actions/workflows/ci.yml)
 
-API RESTful de encurtamento de URLs, com CRUD completo e estatísticas de acesso.
+RESTful URL shortening API with full CRUD and access statistics.
 
-## ✨ Funcionalidades
+## ✨ Features
 
-- Criar uma short URL a partir de uma URL longa
-- Consultar os dados de uma short URL
-- Redirecionar para a URL original (registrando o acesso)
-- Atualizar a URL original de um código existente
-- Remover uma short URL
-- Consultar estatísticas de acesso (número de vezes que foi acessada)
-- Documentação interativa (Swagger UI / OpenAPI) e endpoints operacionais (Actuator)
+- Create a short URL from a long URL
+- Retrieve a short URL's data (each retrieval counts as an access)
+- Update the original URL of an existing code
+- Delete a short URL
+- Get access statistics (number of times it was accessed)
+- Interactive documentation (Swagger UI / OpenAPI) and operational endpoints (Actuator)
 
-## 🧱 Arquitetura
+## 🧱 Architecture
 
-O projeto segue **arquitetura hexagonal (ports & adapters)**, isolando as regras de negócio de frameworks e infraestrutura.
-A regra de dependência aponta sempre para dentro: **adapters → application → domain**.
+The project follows a **hexagonal architecture (ports & adapters)**, keeping business rules isolated from frameworks
+and infrastructure.
+The dependency rule always points inward: **adapters → application → domain**.
 
 ```
 domain/
-  model/            → ShortUrl (modelo de domínio puro), ShortCodeFormat
+  model/            → ShortUrl (pure domain model), ShortCodeFormat
   exception/        → InvalidUrlException, ShortUrlNotFoundException, ShortCodeAlreadyExistsException
 
 application/
-  port/in/          → ShortUrlUseCase (casos de uso)
+  port/in/          → ShortUrlUseCase (use cases)
   port/out/         → ShortUrlRepositoryPort, ShortCodeGeneratorPort
-  service/          → ShortUrlService (implementa os casos de uso)
+  service/          → ShortUrlService (implements the use cases)
 
 adapter/
-  in/web/           → controllers, DTOs, mapper e GlobalExceptionHandler
-  out/persistence/  → ShortUrlPersistenceAdapter, entidade JPA, repositório Spring Data, mapper
+  in/web/           → controllers, DTOs, mapper and GlobalExceptionHandler
+  out/persistence/  → ShortUrlPersistenceAdapter, JPA entity, Spring Data repository, mapper
   out/codegen/      → Base62ShortCodeGenerator
 
 config/             → OpenApiConfig
 ```
 
-### Diagrama de classes
+### Why hexagonal?
 
-```mermaid
-classDiagram
-direction LR
+For a small CRUD, a layered design would be enough, so this is a deliberate trade-off:
 
-namespace domain {
-    class ShortUrl {
-        -Long id
-        -String originalUrl
-        -String shortCode
-        -Long accessCount
-        -Instant createdAt
-        -Instant updatedAt
-        +restore(...) ShortUrl$
-        +updateOriginalUrl(String)
-    }
-    class ShortCodeFormat {
-        +int LENGTH$
-        +String REGEX$
-    }
-    class InvalidUrlException
-    class ShortUrlNotFoundException
-    class ShortCodeAlreadyExistsException
-}
+- **Open variation points:** the project statement allows MySQL *or* MongoDB, and the code generator or a cache in front
+  of reads are likely to change. Each is a new adapter behind a port, not a change to the use cases.
+- **Fast, infrastructure-free tests:** business rules (collision retries, URL validation, not-found handling) are tested
+  with mocked ports, with no Spring context or database.
+- **Local changes:** changing the routes and response shapes only touched the web adapter.
+- **Enforced, not just documented:** `HexagonalArchitectureTest` (ArchUnit) fails the build if the domain depends on
+  frameworks or if the dependency rule is broken.
+- **Costs:** more types and mapping (DTO ↔ domain ↔ JPA entity) and extra indirection.
 
-namespace application {
-    class ShortUrlUseCase {
-        <<interface>>
-        +create(String) ShortUrl
-        +findByShortCode(String) ShortUrl
-        +resolveAndRegisterAccess(String) ShortUrl
-        +update(String, String) ShortUrl
-        +delete(String)
-        +getAccessCount(String) Long
-    }
-    class ShortUrlRepositoryPort {
-        <<interface>>
-        +save(ShortUrl) ShortUrl
-        +findByShortCode(String) Optional
-        +existsByShortCode(String) boolean
-        +findAccessCountByShortCode(String) Optional
-        +incrementAccessCount(Long) int
-        +deleteByShortCode(String) int
-    }
-    class ShortCodeGeneratorPort {
-        <<interface>>
-        +generate() String
-    }
-    class ShortUrlService
-}
-
-namespace adapter_in_web {
-    class ShortUrlController
-    class ShortUrlRedirectController
-    class ShortUrlMapper
-    class GlobalExceptionHandler
-    class ShortUrlRequest
-    class ShortUrlResponse
-    class StatsResponse
-}
-
-namespace adapter_out {
-    class ShortUrlPersistenceAdapter
-    class ShortUrlPersistenceMapper
-    class ShortUrlJpaRepository {
-        <<interface>>
-    }
-    class ShortUrlJpaEntity
-    class Base62ShortCodeGenerator
-}
-
-ShortUrlService ..|> ShortUrlUseCase
-ShortUrlService --> ShortUrlRepositoryPort
-ShortUrlService --> ShortCodeGeneratorPort
-ShortUrlService ..> ShortUrl
-ShortUrlService ..> InvalidUrlException
-ShortUrlService ..> ShortUrlNotFoundException
-ShortUrlService ..> ShortCodeAlreadyExistsException
-
-ShortUrlController --> ShortUrlUseCase
-ShortUrlController --> ShortUrlMapper
-ShortUrlController ..> ShortCodeFormat
-ShortUrlRedirectController --> ShortUrlUseCase
-ShortUrlMapper ..> ShortUrlResponse
-ShortUrlMapper ..> StatsResponse
-ShortUrlController ..> ShortUrlRequest
-GlobalExceptionHandler ..> InvalidUrlException
-GlobalExceptionHandler ..> ShortUrlNotFoundException
-
-ShortUrlPersistenceAdapter ..|> ShortUrlRepositoryPort
-ShortUrlPersistenceAdapter --> ShortUrlJpaRepository
-ShortUrlPersistenceAdapter --> ShortUrlPersistenceMapper
-ShortUrlJpaRepository ..> ShortUrlJpaEntity
-ShortUrlPersistenceMapper ..> ShortUrlJpaEntity
-ShortUrlPersistenceMapper ..> ShortUrl
-Base62ShortCodeGenerator ..|> ShortCodeGeneratorPort
-Base62ShortCodeGenerator ..> ShortCodeFormat
-```
+Details and alternatives in [ADR 0001](docs/adr/0001-hexagonal-architecture.md).
 
 ## 🛠️ Stack
 
 - Java 21
 - Spring Boot 4.1.2 (Web, Validation, Data JPA, Actuator)
 - MySQL
-- Liquibase (versionamento de schema)
+- Liquibase (schema versioning)
 - springdoc-openapi 3.2.0 (OpenAPI / Swagger UI)
 - JUnit 5 + Mockito
-- Testcontainers (MySQL) para testes de integração
-- JaCoCo (cobertura)
+- Testcontainers (MySQL) for integration tests
+- JaCoCo (coverage)
 
 ## 📡 Endpoints
 
 ### API
 
-| Método | Rota | Descrição | Respostas |
-|---|---|---|---|
-| POST | `/api/shorten` | Cria uma short URL (body `{"url": "..."}`) | `201`, `400` |
-| GET | `/api/shorten/{code}` | Retorna os dados da short URL | `200`, `404` |
-| PUT | `/api/shorten/{code}` | Atualiza a URL original (body `{"url": "..."}`) | `200`, `400`, `404` |
-| DELETE | `/api/shorten/{code}` | Remove a short URL | `204`, `404` |
-| GET | `/api/shorten/{code}/stats` | Retorna as estatísticas de acesso | `200`, `404` |
-| GET | `/{code}` | Redireciona (`302`, header `Location`) para a URL original e incrementa o contador de acessos | `302`, `404` |
+| Method | Route                   | Description                                                            | Responses           |
+|--------|-------------------------|------------------------------------------------------------------------|---------------------|
+| POST   | `/shorten`              | Creates a short URL (body `{"url": "..."}`)                            | `201`, `400`        |
+| GET    | `/shorten/{code}`       | Returns the short URL data and **increments the access counter**       | `200`, `404`        |
+| PUT    | `/shorten/{code}`       | Updates the original URL (body `{"url": "..."}`)                       | `200`, `400`, `404` |
+| DELETE | `/shorten/{code}`       | Deletes the short URL                                                  | `204`, `404`        |
+| GET    | `/shorten/{code}/stats` | Returns the short URL data with `accessCount` (does not count as access) | `200`, `404`        |
 
-Regras: `{code}` tem **7 caracteres alfanuméricos** (Base62); a URL deve ser `http` ou `https` e ter no máximo **2048 caracteres**.
-Os erros seguem o formato `application/problem+json` (`ProblemDetail`) com `timestamp` e, em erros de validação, a lista `errors[]` (`field` e `message`).
+Rules: `{code}` is **7 alphanumeric characters** (Base62); the URL must be `http` or `https` and at most **2048
+characters** long.
+Errors use the `application/problem+json` format (`ProblemDetail`) with a `timestamp` and, for validation errors, an
+`errors[]` list (`field` and `message`).
 
-### Documentação
+### Documentation
 
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/swagger-ui/index.html` | Swagger UI |
-| GET | `/v3/api-docs` | Especificação OpenAPI (JSON) |
+| Method | Route                    | Description                 |
+|--------|--------------------------|-----------------------------|
+| GET    | `/swagger-ui/index.html` | Swagger UI                  |
+| GET    | `/v3/api-docs`           | OpenAPI specification (JSON) |
 
-### Operação (Actuator)
+### Operations (Actuator)
 
-| Método | Rota | Descrição |
-|---|---|---|
-| GET | `/actuator/health` | Saúde da aplicação (inclui o banco) |
-| GET | `/actuator/health/liveness` | Probe de liveness |
-| GET | `/actuator/health/readiness` | Probe de readiness |
-| GET | `/actuator/info` | Informações da aplicação |
-| GET | `/actuator/metrics` | Métricas |
+| Method | Route                        | Description                        |
+|--------|------------------------------|------------------------------------|
+| GET    | `/actuator/health`           | Application health (includes the database) |
+| GET    | `/actuator/health/liveness`  | Liveness probe                     |
+| GET    | `/actuator/health/readiness` | Readiness probe                    |
+| GET    | `/actuator/info`             | Application information            |
+| GET    | `/actuator/metrics`          | Metrics                            |
 
-Somente `health`, `info` e `metrics` são expostos; os detalhes do health ficam ocultos (`show-details: never`).
+Only `health`, `info` and `metrics` are exposed; health details are hidden (`show-details: never`).
 
-### Exemplo
+### Example
 
 ```bash
-curl -X POST http://localhost:8080/api/shorten \
+curl -X POST http://localhost:8080/shorten \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://example.com/um/caminho/bem/longo"}'
+  -d '{"url": "https://example.com/some/long/url"}'
 ```
 
 ```json
 {
   "id": 1,
-  "url": "https://example.com/um/caminho/bem/longo",
+  "url": "https://example.com/some/long/url",
   "shortCode": "aB3dE9x",
-  "shortUrl": "http://localhost:8080/aB3dE9x",
   "createdAt": "2026-10-25T12:00:00Z",
   "updatedAt": "2026-10-25T12:00:00Z"
 }
 ```
 
-## 🚀 Como executar
+## 🚀 Running
 
-### Com Docker Compose
+### With Docker Compose
 
 ```bash
-# Apenas o banco MySQL (e a API rodando pela IDE ou por ./mvnw spring-boot:run)
+# Only the MySQL database (run the API from your IDE or with ./mvnw spring-boot:run)
 docker compose up -d db
 
-# Banco + API em containers (perfil prod)
+# Database + API in containers (prod profile)
 docker compose --profile app up --build
 ```
 
-Se a porta 3306 do host já estiver em uso, defina `DB_PORT` (ex.: `DB_PORT=3307 docker compose up -d db`) e aponte `DB_URL` para essa porta.
+If host port 3306 is already in use, set `DB_PORT` (e.g. `DB_PORT=3307 docker compose up -d db`) and point `DB_URL` to
+that port.
 
-### Sem Docker
+### Without Docker
 
-Pré-requisitos: Java 21 e um MySQL acessível. Por padrão a API usa `localhost:3306`, banco `shortifyapiDb`, usuário `root` sem senha.
+Requirements: Java 21 and a reachable MySQL. By default the API uses `localhost:3306`, database `shortifyapiDb`, user
+`root` with no password.
 
 ```bash
 ./mvnw spring-boot:run
 ```
 
-### Configuração
+### Configuration
 
-| Variável | Padrão |
-|---|---|
-| `DB_URL` | `jdbc:mysql://localhost:3306/shortifyapiDb?useSSL=false&serverTimezone=UTC` |
-| `DB_USER` | `root` |
-| `DB_PASSWORD` | _(vazio)_ |
-| `SPRING_PROFILES_ACTIVE` | _(nenhum; a imagem Docker usa `prod`)_ |
+| Variable                 | Default                                                                     |
+|--------------------------|-----------------------------------------------------------------------------|
+| `DB_URL`                 | `jdbc:mysql://localhost:3306/shortifyapiDb?useSSL=false&serverTimezone=UTC` |
+| `DB_USER`                | `root`                                                                      |
+| `DB_PASSWORD`            | _(empty)_                                                                   |
+| `SPRING_PROFILES_ACTIVE` | _(none; the Docker image uses `prod`)_                                      |
 
-O perfil **`prod`** desativa a Swagger UI e o `/v3/api-docs`, expõe apenas `health` e `info` no Actuator e desliga o log de SQL.
-Como a API não tem autenticação, mantenha `/actuator` e a documentação fora de redes públicas.
+The **`prod`** profile disables Swagger UI and `/v3/api-docs`, exposes only `health` and `info` in Actuator, and turns
+off SQL logging.
+Since the API has no authentication, keep `/actuator` and the documentation away from public networks.
 
-As migrations do Liquibase são executadas automaticamente na inicialização.
-Com a aplicação no ar (perfil padrão), abra a Swagger UI em <http://localhost:8080/swagger-ui/index.html> e o health em <http://localhost:8080/actuator/health>.
+Liquibase migrations run automatically on startup.
+With the application running (default profile), open Swagger UI at <http://localhost:8080/swagger-ui/index.html> and
+the health endpoint at <http://localhost:8080/actuator/health>.
 
-## 🧪 Testes
+## 🧪 Tests
 
-Os testes de integração usam Testcontainers, então é necessário ter o **Docker** em execução.
+Integration tests use Testcontainers, so **Docker** must be running.
 
 ```bash
 ./mvnw test
 ```
 
-Um único container MySQL é compartilhado por todas as classes de integração (`support/IntegrationTestSupport`) e pode ser
-reaproveitado entre execuções com `testcontainers.reuse.enable=true` em `~/.testcontainers.properties`.
-O relatório de cobertura do JaCoCo é gerado em `target/site/jacoco` (com `./mvnw verify`).
+A single MySQL container is shared by all integration test classes (`support/IntegrationTestSupport`) and can be reused
+between runs with `testcontainers.reuse.enable=true` in `~/.testcontainers.properties`.
+The JaCoCo coverage report is generated at `target/site/jacoco` (with `./mvnw verify`).

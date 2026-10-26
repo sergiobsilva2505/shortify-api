@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/shorten")
+@RequestMapping("/shorten")
 public class ShortUrlController implements ShortUrlApi {
 
     private static final String CODE_PATH = "/{code:" + ShortCodeFormat.REGEX + "}";
@@ -43,7 +43,7 @@ public class ShortUrlController implements ShortUrlApi {
     @Override
     @GetMapping(CODE_PATH)
     public ResponseEntity<ShortUrlResponse> findByCode(@PathVariable String code) {
-        ShortUrlResponse response = mapper.toResponse(service.findByShortCode(code));
+        ShortUrlResponse response = mapper.toResponse(service.resolveAndRegisterAccess(code));
         return ResponseEntity.ok(response);
     }
 
